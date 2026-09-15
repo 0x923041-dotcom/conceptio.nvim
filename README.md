@@ -7,7 +7,10 @@ A thin Lua wrapper over the public [`conceptio`](https://github.com/0x923041-dot
 ## Requirements
 
 - Neovim **0.10+** (uses `vim.system` and `vim.json`)
-- The **`conceptio` CLI** on `PATH` — `pip install conceptio-search`
+- The **`conceptio` CLI** on `PATH` — `pip install conceptio-search`.
+  **0.3.0 or newer**: every call this plugin makes is accepted by 0.3.0
+  (0.1.1 has neither `--license` on `search` nor `--json` on `info`). The
+  current release is 0.3.2.
 
 ## Install
 

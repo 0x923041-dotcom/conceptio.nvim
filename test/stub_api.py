@@ -19,6 +19,12 @@ needs a job that never finishes (to exercise a `--wait` budget) starts this
 stub with ``CONCEPTIO_STUB_JOB_MODE=running``; ``expired`` is the other dial;
 the default ``done`` completes on the first poll.
 
+Connector behaviour is dialled the same way, for the same reason — the client
+maps a server-issued *reason* to a different human message, and a stub that
+only ever succeeds leaves every one of those branches unreachable:
+``CONCEPTIO_STUB_CONNECTOR_MODE=exhausted|pro|not_configured`` answers 403/401
+with the matching reason; the default ``ok`` completes the handoff.
+
 Usage (from the plugin root, in one shell):
     python3 test/stub_api.py &
     CONCEPTIO_API_BASE=http://127.0.0.1:8799 \\
@@ -42,6 +48,20 @@ DEFAULT_PORT = 8799
 # done (default) | running | expired — see the module docstring.
 JOB_MODE = os.environ.get("CONCEPTIO_STUB_JOB_MODE", "done")
 JOB_ID = "job_stub_0001"
+
+# ok (default) | exhausted | pro | not_configured — the connector-failure dial.
+# Each entry is (status, reason, message) as the public API reports it, because
+# the server-owned connectors answer a *reason* the client maps to a different
+# human message per case; without a dial only the happy path is reachable.
+CONNECTOR_MODE = os.environ.get("CONCEPTIO_STUB_CONNECTOR_MODE", "ok")
+CONNECTOR_FAILURES = {
+    "exhausted": (403, "connectors_exhausted",
+                  "The shared connector trial is used up; upgrade to Pro."),
+    "pro": (403, "connectors_bulk_pro",
+            "Bulk connector export is included in the Pro plan."),
+    "not_configured": (401, "zotero_not_configured",
+                       "Configure Zotero in the Conceptio profile before saving."),
+}
 
 # Canned documents. The suite asserts that the reported total exceeds the page
 # size it requested, so the search response deliberately claims more hits than
@@ -170,6 +190,27 @@ class Handler(BaseHTTPRequestHandler):
                 "format": fmt,
                 "citation": "@misc{conceptio%s, title={Stub Citation}}" % doc_id,
             })
+        elif path.startswith("/api/document/") and path.endswith("/proof"):
+            # The evidence bundle (`conceptio proof`, and the passage-level form
+            # when `q` is present). Kept ahead of the plain-document branch:
+            # that branch reads the id off the last path segment, so `…/proof`
+            # would otherwise be served as a document whose id is "proof".
+            doc_id = path[len("/api/document/"):-len("/proof")].strip("/")
+            doc = next((d for d in DOCS if str(d["id"]) == doc_id), DOCS[0])
+            query = (params.get("q") or [""])[0]
+            self._send({
+                "document_id": doc["id"],
+                "source": doc["source"],
+                "source_label": doc["source_label"],
+                "license": doc["license"],
+                "content_hash": "sha256:" + ("0" * 64),
+                "authority_score": 0.87,
+                "retrieved_at": "2026-09-15T00:00:00Z",
+                "version_status": "current",
+                "canonical_url": doc["url"],
+                "citation": "Joint Task Force (2020). Stub Citation.",
+                "snippet": ("matched passage for: " + query) if query else doc["description"],
+            })
         elif path.startswith("/api/document/"):
             doc_id = path.rsplit("/", 1)[-1]
             doc = next((d for d in DOCS if str(d["id"]) == doc_id), DOCS[0])
@@ -227,6 +268,10 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         payload = self._read_json()
 
+        if path.startswith("/api/connectors/") and CONNECTOR_MODE in CONNECTOR_FAILURES:
+            status, reason, message = CONNECTOR_FAILURES[CONNECTOR_MODE]
+            self._send({"detail": {"reason": reason, "message": message}}, status)
+            return
         if path == "/api/search/batch":
             queries = payload.get("queries")
             if not isinstance(queries, list) or not 1 <= len(queries) <= 10:
