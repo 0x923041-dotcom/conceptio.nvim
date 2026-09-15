@@ -1,0 +1,95 @@
+*conceptio.txt*  Search the Conceptio Open Knowledge Archive from Neovim.
+
+==============================================================================
+CONTENTS                                                    *conceptio-contents*
+
+1. Introduction ................. |conceptio-introduction|
+2. Setup ........................ |conceptio-setup|
+3. Commands ..................... |conceptio-commands|
+4. Quickfix actions ............. |conceptio-qf-actions|
+5. Error surfacing .............. |conceptio-error-surface|
+
+==============================================================================
+INTRODUCTION                                            *conceptio-introduction*
+
+conceptio.nvim is a thin Lua wrapper over the public `conceptio` command-line
+client (https://github.com/0x923041-dotcom/conceptio-cli). Search open-access
+papers, standards, case law, regulations and technical documents; resolve known
+identifiers; yank citations in 11 formats; preview metadata in a floating
+window — all from the quickfix list.
+
+The CLI owns authentication, retries, rate-limit handling and upgrade hints, so
+this plugin, the terminal, the MCP server and the other Conceptio extensions
+share one core implementation. No credentials are embedded.
+
+Requirements: Neovim 0.10+ and the `conceptio` CLI on PATH
+(`pip install conceptio-search`).
+
+==============================================================================
+SETUP                                                          *conceptio-setup*
+
+The plugin has no global configuration until |conceptio-setup| is called.
+Credentials are optional: the CLI resolves them from a saved `conceptio auth`
+credential or from CONCEPTIO_API_KEY. Anything set here is passed to the CLI
+through the environment for that call only.
+
+>lua
+    require("conceptio").setup {
+      api_base    = "https://www.conceptio.app", -- optional override
+      api_key     = "ckey_live_...",             -- optional; $CONCEPTIO_API_KEY fallback
+      license_key = nil,                         -- optional; CONCEPTIO_LICENSE_KEY
+      bin         = "conceptio",                 -- CLI executable (path when not on PATH)
+      limit       = 20,                          -- default results per search
+    }
+<
+
+The Dev plan is the agent tier for programmatic surfaces; free keys are for the
+browser pool and cannot call the API.
+
+==============================================================================
+COMMANDS                                                  *conceptio-commands*
+
+:ConceptioSearch [query] [--sources=a,b] [--license=commercial-ok] [--limit=N]
+        Search the archive and fill the quickfix list (`:copen` runs
+        automatically). source:/category:/lang: directives inside the query
+        are parsed into real filters. --license=commercial-ok restricts to
+        sources whose catalog license explicitly permits commercial use;
+        --limit=N overrides the configured page size.
+
+:ConceptioResolve [identifier]
+        Resolve a known identifier — RFC number, DOI, arXiv ID, PMID,
+        NIST/FIPS designation, US case citation — into the quickfix list.
+
+:ConceptioCite [doc-id] [format]
+        Yank a citation for a document id into the `+` register. Formats:
+        bibtex, apa (default), mla, chicago, ieee, harvard, ris, bluebook,
+        oscola, iso690, ansiz39.
+
+:ConceptioOpen [doc-id]
+        Open the document's public page in the default browser.
+
+:ConceptioPreview [doc-id]
+        Show a document's metadata — author, source, year, category, license,
+        language, abstract and url — in a floating window. Press `q` to close.
+
+:ConceptioStatus
+        Report the current tier and quota that the API grants this credential.
+
+==============================================================================
+QUICKFIX ACTIONS                                            *conceptio-qf-actions*
+
+The quickfix list is interactive: with the cursor on an entry, <CR> opens that
+document in the default browser, `c` yanks its APA citation into the `+`
+register, and `p` previews its metadata in a floating window. All three act on
+the `[id]` prefix of the entry text, so rows without a source url stay
+navigable. Buffer-local, installed fresh on every fill.
+
+==============================================================================
+ERROR SURFACING                                          *conceptio-error-surface*
+
+Errors are surfaced verbatim from the CLI — an authentication hint, the tier's
+exact rate-limit message, or the upgrade prompt for a free key on a programmatic
+surface. The plugin never replaces a real message with a generic client-side
+guess.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
