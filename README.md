@@ -93,16 +93,19 @@ conceptio.open(7288)
 
 ## Development
 
-The plugin has no build step — `lua/conceptio/` is the whole source. The headless regression suite drives the real CLI live:
+The plugin has no build step — `lua/conceptio/` is the whole source. The whole headless suite is one command:
 
 ```bash
-pip install conceptio-search   # or point the bin argument at a local checkout
-nvim --clean -u test/init.lua -l test/run.lua [api_key] [bin]
+bash test/run.sh               # the suite against the loopback stub — no account, no credits
+bash test/run.sh --keyless     # just the honest auth-gate path
+bash test/run.sh --live <key>  # the same suite against the real archive
 ```
 
-With a key it exercises search → quickfix → cite → resolve → preview → status end-to-end against the live API (respecting the tier's 1 req/s burst limiter); without one it asserts the honest auth-gate path (the CLI refuses keyless runs client-side, so no credential may be saved to `~/.conceptio/config.json` for that run). `bin` defaults to `conceptio`. Exits nonzero on any failure.
+`test/run.sh` resolves a Neovim (`$NVIM`, then `PATH`, then a portable tree under `../tmp/nvim-portable`), resolves the `conceptio` CLI (`$CONCEPTIO_CLI`, then the sibling checkout's venv, then `PATH`), starts `test/stub_api.py` on loopback, runs `test/run.lua`, and stops the stub again. It exits with the suite's own status, and **2** when this box cannot run it at all — so "could not check" is never confused with "checked and fine".
 
-No account and no credits are needed to run the full suite — `test/stub_api.py` serves the API shapes on loopback, which the CLI accepts over plain HTTP for local hosts:
+With a key it exercises search → quickfix → cite → resolve → preview → status end-to-end against the live API (respecting the tier's 1 req/s burst limiter); without one it asserts the honest auth-gate path (the CLI refuses keyless runs client-side, so no credential may be saved to `~/.conceptio/config.json` for that run).
+
+No account and no credits are needed for the default path — `test/stub_api.py` serves the API shapes on loopback, which the CLI accepts over plain HTTP for local hosts. The runner is `run.lua` plus three resolved preconditions; to drive it by hand:
 
 ```bash
 python3 test/stub_api.py &          # 127.0.0.1:8799, canned responses only
