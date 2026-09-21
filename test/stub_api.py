@@ -198,18 +198,44 @@ class Handler(BaseHTTPRequestHandler):
             doc_id = path[len("/api/document/"):-len("/proof")].strip("/")
             doc = next((d for d in DOCS if str(d["id"]) == doc_id), DOCS[0])
             query = (params.get("q") or [""])[0]
+            # The production nesting, copied from Conceptio's `_proof_bundle`
+            # (conceptio/api.py): the document's identity is under `document` and
+            # the matched passage under `passage`. This was flat until
+            # 2026-09-21, and the CLI's human summary quietly read the flat keys
+            # — `Source —`, and a `-q` passage it never showed — while the
+            # harness stayed green, because the harness was serving the shape it
+            # was checking. A stub that invents a shape proves nothing about the
+            # API's own.
             self._send({
-                "document_id": doc["id"],
-                "source": doc["source"],
-                "source_label": doc["source_label"],
-                "license": doc["license"],
-                "content_hash": "sha256:" + ("0" * 64),
-                "authority_score": 0.87,
+                "document": {
+                    "id": doc["id"],
+                    "title": doc["title"],
+                    "author": doc["author"],
+                    "source": doc["source"],
+                    "source_label": doc["source_label"],
+                    "category": doc["category"],
+                    "url": doc["url"],
+                    "source_id": doc.get("source_id", ""),
+                },
                 "retrieved_at": "2026-09-15T00:00:00Z",
+                "content_hash": "sha256:" + ("0" * 64),
+                "license": doc["license"],
+                "access_level": "open_access",
+                "publisher": None,
+                "authority_score": 0.87,
+                "full_text_available": True,
+                "citation": {
+                    "bibtex": "@misc{stub%s, title={%s}}" % (doc["id"], doc["title"]),
+                    "apa": "%s (Stub). %s." % (doc["author"], doc["title"]),
+                    "ris": "TY  - STD",
+                },
+                "passage": {
+                    "snippet": ("matched passage for: " + query) if query else "",
+                    "context": ("context around: " + query) if query else "",
+                },
                 "version_status": "current",
-                "canonical_url": doc["url"],
-                "citation": "Joint Task Force (2020). Stub Citation.",
-                "snippet": ("matched passage for: " + query) if query else doc["description"],
+                "jurisdiction": None,
+                "standard_status": None,
             })
         elif path.startswith("/api/document/"):
             doc_id = path.rsplit("/", 1)[-1]
