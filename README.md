@@ -10,7 +10,7 @@ A thin Lua wrapper over the public [`conceptio`](https://github.com/0x923041-dot
 - The **`conceptio` CLI** on `PATH` — `pip install conceptio-search`.
   **0.3.0 or newer**: every call this plugin makes is accepted by 0.3.0
   (0.1.1 has neither `--license` on `search` nor `--json` on `info`). The
-  current release is 0.3.3.
+  current release is 0.3.4.
 
 ## Install
 
