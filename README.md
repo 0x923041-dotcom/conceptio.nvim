@@ -89,7 +89,7 @@ conceptio.open(7288)
 
 - Results are served access-aware: metadata-only sources carry metadata + the official link, full text is served only where the source's license permits.
 - `--license=commercial-ok` fails closed — only sources whose catalog license explicitly permits commercial use are admitted.
-- This plugin rides the same shared core as the Raycast and Alfred extensions: the CLI is the single implementation of search, resolve, and citation, and each surface is a thin presenter over it.
+- This plugin rides the same shared core as the terminal and the other editor surfaces: the CLI is the single implementation of search, resolve, and citation, and each surface is a thin presenter over it.
 
 ## Development
 
